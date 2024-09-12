@@ -28,39 +28,20 @@ public:
     SimpleVector() noexcept = default;
 
     // Создаёт вектор из size элементов, инициализированных значением по умолчанию
-    explicit SimpleVector(size_t size) {
-        ArrayPtr<Type> new_arr(size);
-        std::fill(new_arr.Get(), new_arr.Get() + size, Type());
-        arr_.swap(new_arr);
-        size_ = size;
-        capacity_ = size;
-    }
+    explicit SimpleVector(size_t size) : SimpleVector(size, Type()) {}
 
     SimpleVector(ReserveProxyObj reserve_obj) {
-        if (reserve_obj.capacity_ > capacity_) {
-            ArrayPtr<Type> new_arr(reserve_obj.capacity_);
-            std::copy(begin(), end(), new_arr.Get());
-            arr_.swap(new_arr);
-            capacity_ = reserve_obj.capacity_;
-        }
-        else { 
-            return;
-        }
+        ArrayPtr<Type> new_arr(reserve_obj.capacity_);
+        std::copy(begin(), end(), new_arr.Get());
+        arr_.swap(new_arr);
+        capacity_ = reserve_obj.capacity_;
     }
 
     // Создаёт вектор из size элементов, инициализированных значением value
-    SimpleVector(size_t size, const Type& value) {
-        if (size == 0) {
-            SimpleVector();
+    SimpleVector(size_t size, const Type& value) : 
+        arr_(size), size_(size), capacity_(size) {
+            std::fill(arr_.Get(), arr_.Get() + size, value);
         }
-        else {
-            ArrayPtr<Type> new_arr(size);
-            std::fill(new_arr.Get(), new_arr.Get() + size, value);
-            arr_.swap(new_arr);
-            size_ = size;
-            capacity_ = size;
-        }
-    }
 
     // Создаёт вектор из std::initializer_list
     SimpleVector(std::initializer_list<Type> init) {
@@ -87,15 +68,15 @@ public:
     SimpleVector& operator=(const SimpleVector& rhs) {
         if (this != &rhs) {
             auto tmp(rhs);
-            arr_.swap(tmp.arr_);
-            size_ = rhs.GetSize();
-            capacity_ = rhs.GetCapacity();
+            this->swap(tmp);
         }
         return *this;
     }
 
-    SimpleVector(SimpleVector&& other) 
-    : arr_(std::move(other.arr_)), size_(std::exchange(other.size_, 0)), capacity_(std::exchange(other.capacity_, 0)) {}
+    SimpleVector(SimpleVector&& other) : 
+        arr_(std::move(other.arr_)), 
+        size_(std::exchange(other.size_, 0)), 
+        capacity_(std::exchange(other.capacity_, 0)) {}
 
     SimpleVector& operator=(SimpleVector&& rhs) {
         if (this != &rhs) {
@@ -128,7 +109,7 @@ public:
         else {
             size_t new_capacity = 0;
             new_capacity = capacity_ == 0 ? 1 : capacity_ * 2;
-            ArrayPtr<Type> new_arr(new_capacity);
+            ArrayPtr<Type> new_arr(Reserve(new_capacity));
             std::copy(begin(), end(), new_arr.Get());
             new_arr[size_] = item;
             arr_.swap(new_arr);
@@ -203,9 +184,8 @@ public:
 
     // "Удаляет" последний элемент вектора. Вектор не должен быть пустым
     void PopBack() noexcept {
-        if (size_) {
-            --size_;
-        }
+        assert (size_);
+        --size_;
     }
 
     // Удаляет элемент вектора в указанной позиции
@@ -254,9 +234,7 @@ public:
         if (index >= size_) {
             throw std::out_of_range("out of range error");
         }
-        else {
-            return arr_[index];
-        }
+        return arr_[index];
     }
 
     // Возвращает константную ссылку на элемент с индексом index
@@ -265,9 +243,7 @@ public:
         if (index >= size_) {
             throw std::out_of_range("out of range error");
         }
-        else {
-            return arr_[index];
-        }
+        return arr_[index];
     }
 
     // Обнуляет размер массива, не изменяя его вместимость
